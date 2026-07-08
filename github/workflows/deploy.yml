@@ -74,13 +74,26 @@ jobs:
         run: |
           kubectl create secret generic casino-secrets \
             --from-literal=DB_URL='${{ secrets.DB_URL }}' \
+            --from-literal=DB_HOST='postgres' \
+            --from-literal=DB_PORT='5432' \
+            --from-literal=DB_NAME='casino_db' \
             --from-literal=DB_USER='${{ secrets.DB_USER }}' \
             --from-literal=DB_PASSWORD='${{ secrets.DB_PASSWORD }}' \
             --from-literal=JWT_SECRET='${{ secrets.JWT_SECRET }}' \
             --dry-run=client -o yaml | kubectl apply -f -
 
+      - name: Deploy PostgreSQL first
+        run: |
+          kubectl apply -f kubernetes/postgres-configmap.yaml
+          kubectl apply -f kubernetes/postgres-pvc.yaml
+          kubectl apply -f kubernetes/postgres-deployment.yaml
+          kubectl apply -f kubernetes/postgres-service.yaml
+          kubectl rollout status deployment/postgres
+
       - name: Deploy backend to EKS
         run: |
-          kubectl apply -f kubernetes/
+          kubectl apply -f kubernetes/deployment.yaml
+          kubectl apply -f kubernetes/service.yaml
+          kubectl apply -f kubernetes/hpa.yaml
           kubectl rollout restart deployment/casino-backend
           kubectl rollout status deployment/casino-backend
